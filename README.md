@@ -1,1 +1,1 @@
-# snake
+# Pyglet snake game

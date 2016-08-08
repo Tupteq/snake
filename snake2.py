@@ -147,18 +147,24 @@ class Game(pyglet.window.Window):
     STEP = 0.2  # Seconds
     COLUMNS = 32
     ROWS = 18
-
+    HUD_HEIGHT = 30
+    
     def __init__(self):
         super().__init__(resizable=True)
         pyglet.clock.set_fps_limit(60)
         self.batch = pyglet.graphics.Batch()
         self.keys = key.KeyStateHandler()
         self.push_handlers(self.keys)
-        
+        self.score = 0
         self.label = pyglet.text.Label(
-                '', 'Times New Roman', 36,
+                'Press R to Start', 'Times New Roman', 36,
                 color=(255, 0, 0, 255),
                 anchor_x='center', anchor_y='center',
+                batch=self.batch, group=hud)
+        self.score_label = pyglet.text.Label(
+                '', 'Times New Roman', 24,
+                color=(255, 255, 0, 255),
+                anchor_x='center', anchor_y='top',
                 batch=self.batch, group=hud)
 
         self.back_image = pyglet.resource.image('background.png')
@@ -188,6 +194,11 @@ class Game(pyglet.window.Window):
         pyglet.clock.schedule(func=self.update)
         self.time = 0.0
         self.label.text = ""
+        self.set_score(0)
+        
+    def set_score(self, v):
+        self.score = v
+        self.score_label.text = str(self.score)
 
 
     def on_resize(self, width, height):
@@ -195,13 +206,16 @@ class Game(pyglet.window.Window):
         self.back.scale = max(
                 width / self.back_image.width, height / self.back_image.height)
 
-        self.brick_px = min(width / self.COLUMNS, height / self.ROWS)
+        self.brick_px = min(width / self.COLUMNS, (height - self.HUD_HEIGHT) / self.ROWS)
         self.brick_scale = self.brick_px / self.brick_image.width
         self.base_x = (width - self.brick_px * self.COLUMNS) / 2
-        self.base_y = height - (height - self.brick_px * self.ROWS) / 2
+        self.base_y = height - (height - self.brick_px * self.ROWS + self.HUD_HEIGHT) / 2
         
         self.label.x = self.width // 2
         self.label.y = self.height // 2
+        
+        self.score_label.x = self.width // 2
+        self.score_label.y = self.base_y + self.HUD_HEIGHT
 
         Brick.dirty |= Brick.bricks
 
@@ -234,6 +248,7 @@ class Game(pyglet.window.Window):
                         self.snake.step(col, row, True)
                         self.food.delete()
                         self.food = Food()
+                        self.set_score(self.score + 1)
                     else:
                         self.snake.die()
                         self.label.text = "Game Over"

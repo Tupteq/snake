@@ -1,5 +1,4 @@
 import random
-
 import pyglet
 import pyglet.graphics
 import pyglet.resource
@@ -9,6 +8,7 @@ from pyglet.window import key
 # Used to order sprites
 background = pyglet.graphics.OrderedGroup(0)
 foreground = pyglet.graphics.OrderedGroup(1)
+hud = pyglet.graphics.OrderedGroup(2)
 
 
 class Brick(pyglet.sprite.Sprite):
@@ -81,21 +81,30 @@ class Snake:
     def on_key_press(self, symbol, modifiers):
         if not self.alive:
             return
+        direction = None
         if symbol == key.UP:
-            self.direction = UP
+            direction = UP
         elif symbol == key.RIGHT:
-            self.direction = RIGHT
+            direction = RIGHT
         elif symbol == key.DOWN:
-            self.direction = DOWN
+            direction = DOWN
         elif symbol == key.LEFT:
-            self.direction = LEFT
-
-
-    def get_next_step(self):
+            direction = LEFT
+        if direction is not None:
+            col, row = self.get_next_step(direction)
+            if col == self.body[1].col and row == self.body[1].row:
+                return
+            else:
+                self.direction = direction
+        
+        
+    def get_next_step(self, direction=None):
+        if direction is None:
+            direction = self.direction
         if not self.alive:
             return
         head = self.body[0]
-        return head.col + self.direction.dcol, head.row + self.direction.drow
+        return head.col + direction.dcol, head.row + direction.drow
 
 
     def step(self, col, row, grow=False):
@@ -135,7 +144,7 @@ class Food(Brick):
 
 
 class Game(pyglet.window.Window):
-    STEP = 0.25  # Seconds
+    STEP = 0.2  # Seconds
     COLUMNS = 32
     ROWS = 18
 
@@ -145,6 +154,12 @@ class Game(pyglet.window.Window):
         self.batch = pyglet.graphics.Batch()
         self.keys = key.KeyStateHandler()
         self.push_handlers(self.keys)
+        
+        self.label = pyglet.text.Label(
+                '', 'Times New Roman', 36,
+                color=(255, 0, 0, 255),
+                anchor_x='center', anchor_y='center',
+                batch=self.batch, group=hud)
 
         self.back_image = pyglet.resource.image('background.png')
         self.back = pyglet.sprite.Sprite(
@@ -172,6 +187,7 @@ class Game(pyglet.window.Window):
         pyglet.clock.tick()  # Reset dt
         pyglet.clock.schedule(func=self.update)
         self.time = 0.0
+        self.label.text = ""
 
 
     def on_resize(self, width, height):
@@ -183,15 +199,17 @@ class Game(pyglet.window.Window):
         self.brick_scale = self.brick_px / self.brick_image.width
         self.base_x = (width - self.brick_px * self.COLUMNS) / 2
         self.base_y = height - (height - self.brick_px * self.ROWS) / 2
+        
+        self.label.x = self.width // 2
+        self.label.y = self.height // 2
 
         Brick.dirty |= Brick.bricks
 
-
     def on_draw(self):
-        self.clear()
         while Brick.dirty:
             brick = Brick.dirty.pop()
             brick.place()
+        self.clear()
         self.batch.draw()
 
 
@@ -199,13 +217,12 @@ class Game(pyglet.window.Window):
         super().on_key_press(symbol, modifiers)
         if symbol == key.R:
             self.start()
-
+            
 
     def update(self, dt):
         self.time += dt
 
         if self.time >= self.STEP:
-            print(self.time)
             self.time -= self.STEP
             if not self.snake.alive:
                 return
@@ -219,6 +236,7 @@ class Game(pyglet.window.Window):
                         self.food = Food()
                     else:
                         self.snake.die()
+                        self.label.text = "Game Over"
                     return
 
             self.snake.step(col, row)
@@ -229,4 +247,4 @@ if __name__ == "__main__":
     pyglet.resource.path = ['res']
     pyglet.resource.reindex()
     window = Game()
-    pyglet.app.run()
+pyglet.app.run()

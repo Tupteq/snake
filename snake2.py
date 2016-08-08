@@ -191,8 +191,7 @@ class Game(pyglet.window.Window):
         self.food = Food()
         pyglet.clock.unschedule(self.update)
         pyglet.clock.tick()  # Reset dt
-        pyglet.clock.schedule(func=self.update)
-        self.time = 0.0
+        pyglet.clock.schedule_interval(self.update, self.STEP)
         self.label.text = ""
         self.set_score(0)
         
@@ -231,30 +230,27 @@ class Game(pyglet.window.Window):
         super().on_key_press(symbol, modifiers)
         if symbol == key.R:
             self.start()
-            
+    
 
     def update(self, dt):
-        self.time += dt
+        if not self.snake.alive:
+            return
 
-        if self.time >= self.STEP:
-            self.time -= self.STEP
-            if not self.snake.alive:
+        col, row = self.snake.get_next_step()
+        for brick in Brick.bricks:
+            if col == brick.col and row == brick.row:
+                if brick is self.food:
+                    self.snake.step(col, row, True)
+                    self.food.delete()
+                    self.food = Food()
+                    self.set_score(self.score + 1)
+                        
+                else:
+                    self.snake.die()
+                    self.label.text = "Game Over"
                 return
 
-            col, row = self.snake.get_next_step()
-            for brick in Brick.bricks:
-                if col == brick.col and row == brick.row:
-                    if brick is self.food:
-                        self.snake.step(col, row, True)
-                        self.food.delete()
-                        self.food = Food()
-                        self.set_score(self.score + 1)
-                    else:
-                        self.snake.die()
-                        self.label.text = "Game Over"
-                    return
-
-            self.snake.step(col, row)
+        self.snake.step(col, row)
 
 
 
